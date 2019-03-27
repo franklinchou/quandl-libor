@@ -1,12 +1,6 @@
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+target/*
+project/target/*
+.idea/*
 
-# Test binary, build with `go test -c`
-*.test
-
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
+# Ignore lib_managed which stores cached libraries managed by sbt
+lib_managed
