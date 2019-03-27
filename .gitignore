@@ -1,5 +1,6 @@
 target/*
 project/target/*
+project/project/target/*
 .idea/*
 
 # Ignore lib_managed which stores cached libraries managed by sbt
