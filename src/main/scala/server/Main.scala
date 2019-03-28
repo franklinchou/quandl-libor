@@ -35,26 +35,30 @@ class Main {
     val bucket = Bucket.apply(bucketName)
     val today = LocalDate.now(ZoneId.of("America/New_York"))
 
-    // store data
-    s3
-      .get(bucket, bucketKey)
-      .foreach { b =>
-        val cachedDataTimestamp = LocalDate.parse(b.metadata.getUserMetaDataOf("created-at"))
-        if (today.isAfter(cachedDataTimestamp)) {
-          // data is stale, fetch from quandl and store to s3
-          val meta = new ObjectMetadata()
-          meta.addUserMetadata("created-by", "")
-          meta.addUserMetadata("created-at", "")
-          s3.put(bucket, bucketKey, Util.get(treasuryYield).getBytes, meta)
-        }
-      }
-
     s3.get(bucket, bucketKey) match {
-      case Some(c) => output.write(IOUtils.toByteArray(c.content))
-      case None =>
-        val error = s"[error] Failed to fetch data!"
-        output.write(error.getBytes("UTF-8"))
+      // if there is data, update (optional) & serve it up
+      case Some(d) =>
+        val cachedDataTimestamp = LocalDate.parse(d.metadata.getUserMetaDataOf("created-at"))
+        // data is stale, fetch from quandl and store to s3
+        if (today.isAfter(cachedDataTimestamp)) {
+          updateThenOutput(s3, bucket, output)
+        } else {
+          output.write(IOUtils.toByteArray(d.content))
+        }
+      // if there is no data, update it
+      case None => updateThenOutput(s3, bucket, output)
     }
   }
 
+  private def updateThenOutput(s3: S3, bucket: Bucket, output: OutputStream): Unit = {
+    lazy val meta = new ObjectMetadata()
+    meta.addUserMetadata("created-by", "")
+    meta.addUserMetadata("created-at", "")
+    val stream = Util.get(treasuryYield).getBytes
+    val r: PutObjectResult = s3.put(bucket, bucketKey, stream, meta)
+    if (r.isRequesterCharged) {
+      output.write(s"[warn] Account was charged for this transaction".getBytes("UTF-8"))
+    }
+    output.write(stream)
+  }
 }
