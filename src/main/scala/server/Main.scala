@@ -19,6 +19,8 @@ class Main {
   final val bucketName = "peeriq-dev"
   final val bucketKey = "us-treasury-yield"
 
+  final val today = LocalDate.now(ZoneId.of("America/New_York"))
+
   implicit val s3: S3 = S3.at(Region.NorthernVirginia)
 
   def greeting(input: InputStream, output: OutputStream): Unit = {
@@ -27,13 +29,14 @@ class Main {
   }
 
   /**
+    * Retrieve complete us-treasury-yield history
     *
     * @param input
     * @param output
     */
   def retrieveHistory(input: InputStream, output: OutputStream): Unit = {
     val bucket = Bucket.apply(bucketName)
-    val today = LocalDate.now(ZoneId.of("America/New_York"))
+
 
     s3.get(bucket, bucketKey) match {
       // if there is data, update (optional) & serve it up
@@ -43,6 +46,7 @@ class Main {
         if (today.isAfter(cachedDataTimestamp)) {
           updateThenOutput(s3, bucket, output)
         } else {
+          output.write(s"[info] Retrieved cached results".getBytes("UTF-8"))
           output.write(IOUtils.toByteArray(d.content))
         }
       // if there is no data, update it
@@ -50,10 +54,17 @@ class Main {
     }
   }
 
+  /**
+    * Update data on s3 then output
+    *
+    * @param s3
+    * @param bucket
+    * @param output
+    */
   private def updateThenOutput(s3: S3, bucket: Bucket, output: OutputStream): Unit = {
     lazy val meta = new ObjectMetadata()
     meta.addUserMetadata("created-by", "")
-    meta.addUserMetadata("created-at", "")
+    meta.addUserMetadata("created-at", today.toString)
     val stream = Util.get(treasuryYield).getBytes
     val r: PutObjectResult = s3.put(bucket, bucketKey, stream, meta)
     if (r.isRequesterCharged) {
