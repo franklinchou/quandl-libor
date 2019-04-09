@@ -1,5 +1,5 @@
 # quandl-libor
-Get LIBOR (and other metrics) from Quandl
+Get US Treasury Yield Curves (and other metrics) from Quandl. Deployed as a function via AWS lambda.
 
 
 ## Build
